@@ -113,7 +113,7 @@ for (let i = 0; i < numPanels; i++) {
   canopyGroup.add(panelMesh);
 }
 
-// --- Low-Poly Green Bird with Symmetrical Eyes & Grey Side Rings ---
+// --- Low-Poly Green Bird with Big Close Eyes & Grey Side Rings ---
 const birdGroup = new THREE.Group();
 birdGroup.position.set(0, -0.45, 0);
 paragliderGroup.add(birdGroup);
@@ -133,18 +133,18 @@ const beakMesh = new THREE.Mesh(beakGeo, beakMat);
 beakMesh.position.set(0, -0.05, -0.95);
 birdGroup.add(beakMesh);
 
-// Symmetrical Dual Black Eyes
-const eyeGeo = new THREE.BoxGeometry(0.08, 0.08, 0.08);
+// Symmetrical Dual Black Eyes - 2x Bigger and Closer Together
+const eyeGeo = new THREE.BoxGeometry(0.16, 0.16, 0.16);
 const eyeMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
 
 // Right Eye
 const eyeRight = new THREE.Mesh(eyeGeo, eyeMat);
-eyeRight.position.set(0.32, 0.22, -0.45);
+eyeRight.position.set(0.13, 0.19, -0.62);
 birdGroup.add(eyeRight);
 
-// Left Eye (symmetrically opposite across the beak)
+// Left Eye
 const eyeLeft = new THREE.Mesh(eyeGeo, eyeMat);
-eyeLeft.position.set(-0.32, 0.22, -0.45);
+eyeLeft.position.set(-0.13, 0.19, -0.62);
 birdGroup.add(eyeLeft);
 
 // Legs & Feet
@@ -192,16 +192,16 @@ const canopyRopeAnchors = [
 ];
 
 const ropeMat = new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true });
-const ropeRadius = 0.038; // Bold, clearly visible ~5px width
+const ropeRadius = 0.038;
 
 const ropeCylGeo = new THREE.CylinderGeometry(ropeRadius, ropeRadius, 1, 6);
-ropeCylGeo.translate(0, 0.5, 0); // Base at 0, extends to 1
-ropeCylGeo.rotateX(Math.PI / 2); // Aligned along +Z for lookAt()
+ropeCylGeo.translate(0, 0.5, 0);
+ropeCylGeo.rotateX(Math.PI / 2);
 
 const ropeMeshes = [];
 for (let i = 0; i < 4; i++) {
   const ropeMesh = new THREE.Mesh(ropeCylGeo, ropeMat);
-  scene.add(ropeMesh); // Add to scene so world positions apply correctly
+  scene.add(ropeMesh);
   ropeMeshes.push(ropeMesh);
 }
 
