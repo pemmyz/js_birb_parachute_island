@@ -2,25 +2,51 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>PS1 Tropical Bird Paraglider</title>
   <link rel="stylesheet" href="style.css" />
   <!-- Three.js via CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
+  <!-- Fullscreen Toggle Button (Top-Left) -->
+  <button id="mobile-btn" class="no-joystick">📱 Fullscreen</button>
+
   <div id="canvas-container"></div>
   
+  <!-- UI Text (Positioned below the Fullscreen button) -->
   <div id="ui-overlay">
-    <h1>PARABIRD '96: ISLE FLIGHT</h1>
-    <p>Low-Speed Scenic Island Approach</p>
+    <h1>PARABIRD '96</h1>
+    <p>Tropical Island Flight</p>
     <div class="controls-hint">
-      Move / Drag Mouse to Steer &amp; Pitch &bull; Click/Hold for Thermal Lift &bull; [R] Reset
+      Touch/Drag for Joystick &bull; ▲ or Hold Click for Thermal Lift &bull; [R] Reset
     </div>
   </div>
 
   <div id="altitude-hud">
     <span id="alt-val">ALT: 180m</span> | <span id="spd-val">SPD: 24 km/h</span>
+  </div>
+
+  <!-- Mobile Touch Control Buttons (Active in Fullscreen/Mobile Mode) -->
+  <div id="mobile-controls">
+    <div id="mobile-dpad">
+      <button id="mobile-left" class="mobile-control-btn no-joystick">◀</button>
+      <button id="mobile-right" class="mobile-control-btn no-joystick">▶</button>
+    </div>
+    <div id="mobile-action">
+      <button id="mobile-reset" class="mobile-control-btn btn-sm no-joystick">↺</button>
+      <button id="mobile-up" class="mobile-control-btn no-joystick">▲</button>
+    </div>
+  </div>
+
+  <!-- Floating Virtual Joystick -->
+  <div id="virtual-joystick" class="joystick-container">
+    <div class="joystick-base">
+      <div class="joystick-ring"></div>
+      <div class="joystick-crosshair-h"></div>
+      <div class="joystick-crosshair-v"></div>
+      <div class="joystick-thumb"></div>
+    </div>
   </div>
 
   <script src="script.js"></script>

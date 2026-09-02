@@ -4,17 +4,22 @@
   padding: 0;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 body, html {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background-color: #8ed6ea;
+  background-color: #8cd3eb;
   font-family: 'Courier New', Courier, monospace;
+  touch-action: none; /* Prevents gestures & refresh on mobile */
 }
 
 #canvas-container {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100vw;
   height: 100vh;
   display: block;
@@ -25,50 +30,223 @@ body, html {
   cursor: grabbing;
 }
 
+/* Fullscreen Toggle Button - Top Left Corner */
+#mobile-btn {
+  position: fixed;
+  top: 14px;
+  left: 16px;
+  z-index: 2000;
+  background: rgba(26, 60, 72, 0.85);
+  color: #fff6dd;
+  border: 1.5px solid rgba(244, 208, 63, 0.8);
+  font-size: 11px;
+  font-weight: bold;
+  font-family: inherit;
+  padding: 7px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  transition: background 0.15s, transform 0.1s;
+}
+
+#mobile-btn:active {
+  background: rgba(46, 125, 50, 0.9);
+  transform: scale(0.95);
+}
+
+/* UI Overlay - Positioned cleanly below the Fullscreen Button */
 #ui-overlay {
   position: absolute;
-  top: 18px;
-  left: 20px;
+  top: 56px;
+  left: 16px;
   color: #1a3c48;
   pointer-events: none;
   text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.7);
+  z-index: 10;
 }
 
 #ui-overlay h1 {
-  font-size: 1.4rem;
+  font-size: 1.2rem;
   font-weight: 900;
-  letter-spacing: 2px;
+  letter-spacing: 1.5px;
   margin-bottom: 2px;
 }
 
 #ui-overlay p {
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   font-weight: bold;
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
 .controls-hint {
-  margin-top: 8px;
-  font-size: 0.75rem;
-  background: rgba(255, 255, 255, 0.55);
-  padding: 5px 10px;
+  margin-top: 6px;
+  font-size: 0.7rem;
+  background: rgba(255, 255, 255, 0.65);
+  padding: 4px 10px;
   border-radius: 4px;
   display: inline-block;
-  border: 1px solid rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(0, 0, 0, 0.12);
   box-shadow: 0 2px 6px rgba(0,0,0,0.06);
 }
 
+/* Altitude / Speed HUD */
 #altitude-hud {
   position: absolute;
-  bottom: 20px;
-  left: 20px;
-  font-size: 0.95rem;
+  bottom: 16px;
+  left: 16px;
+  font-size: 0.9rem;
   font-weight: 900;
   color: #ffffff;
-  background: rgba(26, 60, 72, 0.65);
+  background: rgba(26, 60, 72, 0.75);
   padding: 6px 12px;
-  border-radius: 4px;
+  border-radius: 5px;
   letter-spacing: 1px;
   pointer-events: none;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(244, 208, 63, 0.4);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+}
+
+/* --- FULLSCREEN TOUCHSCREEN CONTROLS OVERLAY --- */
+#mobile-controls {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3000;
+  display: none; /* Displayed when mobile-mode is active */
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+/* Enabled in Fullscreen or on Mobile Viewports */
+body.mobile-mode #mobile-controls {
+  display: flex;
+}
+
+.mobile-control-btn {
+  pointer-events: auto;
+  width: 66px;
+  height: 66px;
+  background: radial-gradient(circle, rgba(46, 204, 113, 0.25) 0%, rgba(27, 97, 43, 0.6) 80%);
+  border: 2px solid rgba(244, 208, 63, 0.75);
+  border-radius: 50%;
+  color: #fff6dd;
+  font-size: 26px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  user-select: none;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  box-shadow: 0 0 14px rgba(46, 204, 113, 0.4), inset 0 0 10px rgba(244, 208, 63, 0.2);
+  transition: transform 0.08s, background 0.08s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-control-btn.btn-sm {
+  width: 46px;
+  height: 46px;
+  font-size: 18px;
+  background: rgba(26, 60, 72, 0.65);
+  margin-bottom: 6px;
+}
+
+.mobile-control-btn:active {
+  background: radial-gradient(circle, rgba(241, 196, 15, 0.5) 0%, rgba(46, 125, 50, 0.8) 100%);
+  border-color: #ffffff;
+  transform: scale(0.92);
+}
+
+#mobile-dpad {
+  display: flex;
+  gap: 12px;
+  margin-left: 6px;
+  margin-bottom: 8px;
+}
+
+#mobile-action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  margin-right: 6px;
+  margin-bottom: 8px;
+}
+
+/* --- TROPICAL GREEN & YELLOW VIRTUAL JOYSTICK --- */
+.joystick-container {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%, -50%);
+  will-change: transform, left, top, opacity;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.1s ease-out;
+}
+
+.joystick-container.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.joystick-base {
+  position: relative;
+  width: 170px;
+  height: 170px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(46, 204, 113, 0.22) 0%, rgba(27, 97, 43, 0.65) 60%, rgba(18, 48, 30, 0.85) 100%);
+  border: 2.5px solid rgba(244, 208, 63, 0.8);
+  box-shadow: 0 0 25px rgba(46, 204, 113, 0.5), inset 0 0 20px rgba(244, 208, 63, 0.25);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+.joystick-ring {
+  position: absolute;
+  width: 75px;
+  height: 75px;
+  border-radius: 50%;
+  border: 2px dashed rgba(241, 196, 15, 0.75);
+  pointer-events: none;
+}
+
+.joystick-crosshair-h {
+  position: absolute;
+  width: 100%;
+  height: 1.5px;
+  background: rgba(244, 208, 63, 0.35);
+  pointer-events: none;
+}
+
+.joystick-crosshair-v {
+  position: absolute;
+  height: 100%;
+  width: 1.5px;
+  background: rgba(244, 208, 63, 0.35);
+  pointer-events: none;
+}
+
+.joystick-thumb {
+  position: absolute;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fff6a6 0%, #f1c40f 45%, #27ae60 85%, #1e612b 100%);
+  border: 2px solid #fffdec;
+  box-shadow: 0 0 16px rgba(241, 196, 15, 0.85), 0 0 22px rgba(46, 204, 113, 0.75), inset 0 0 10px rgba(255, 255, 255, 0.8);
+  pointer-events: none;
+  transform: translate(0px, 0px);
+  will-change: transform;
 }
