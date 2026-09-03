@@ -6,6 +6,8 @@ A small browser-based 3D flight experience inspired by the visual style of PlayS
 
 **PARABIRD '96 – Tropical Island Flight** puts a low-poly green bird under a colorful paraglider canopy and lets the player fly over a large tropical island and animated ocean.
 
+## Play it now: https://pemmyz.github.io/js_birb_parachute_island/
+
 ## Features
 
 - PS1-inspired low-poly 3D graphics
