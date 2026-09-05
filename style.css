@@ -13,7 +13,7 @@ body, html {
   overflow: hidden;
   background-color: #8cd3eb;
   font-family: 'Courier New', Courier, monospace;
-  touch-action: none; /* Prevents gestures & refresh on mobile */
+  touch-action: none;
 }
 
 #canvas-container {
@@ -30,34 +30,45 @@ body, html {
   cursor: grabbing;
 }
 
-/* Fullscreen Toggle Button - Top Left Corner */
-#mobile-btn {
+/* Top Toolbar Controls */
+#top-left-controls {
   position: fixed;
   top: 14px;
   left: 16px;
   z-index: 2000;
+  display: flex;
+  gap: 8px;
+}
+
+.top-bar-btn {
   background: rgba(26, 60, 72, 0.85);
   color: #fff6dd;
   border: 1.5px solid rgba(244, 208, 63, 0.8);
   font-size: 11px;
   font-weight: bold;
   font-family: inherit;
-  padding: 7px 14px;
+  padding: 7px 12px;
   border-radius: 6px;
   cursor: pointer;
   letter-spacing: 0.5px;
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-  transition: background 0.15s, transform 0.1s;
+  transition: background 0.15s, transform 0.1s, border-color 0.15s;
 }
 
-#mobile-btn:active {
+.top-bar-btn:active {
   background: rgba(46, 125, 50, 0.9);
   transform: scale(0.95);
 }
 
-/* UI Overlay - Positioned cleanly below the Fullscreen Button */
+.top-bar-btn.active {
+  background: rgba(46, 125, 50, 0.95);
+  border-color: #ffffff;
+  box-shadow: 0 0 10px rgba(46, 204, 113, 0.6);
+}
+
+/* UI Overlay */
 #ui-overlay {
   position: absolute;
   top: 56px;
@@ -84,12 +95,68 @@ body, html {
 .controls-hint {
   margin-top: 6px;
   font-size: 0.7rem;
-  background: rgba(255, 255, 255, 0.65);
-  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.75);
+  padding: 5px 10px;
   border-radius: 4px;
   display: inline-block;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+/* GTA Style Ring & Score HUD */
+#score-hud {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  z-index: 2000;
+  pointer-events: none;
+}
+
+#ring-badge, #score-badge, #dist-badge {
+  background: rgba(18, 48, 30, 0.85);
+  border: 1.5px solid #f1c40f;
+  color: #ffeb3b;
+  font-weight: 900;
+  font-size: 0.85rem;
+  padding: 4px 10px;
+  border-radius: 5px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  text-shadow: 1px 1px 0 #000;
+  letter-spacing: 0.8px;
+}
+
+#score-badge {
+  color: #ffffff;
+}
+
+#dist-badge {
+  font-size: 0.75rem;
+  color: #78e08f;
+}
+
+/* Ring Passed Popup Effect */
+.ring-popup {
+  position: fixed;
+  top: 35%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.6);
+  color: #fff200;
+  font-size: 2.2rem;
+  font-weight: 900;
+  text-shadow: 0 0 16px #ff9900, 3px 3px 0 #000;
+  pointer-events: none;
+  opacity: 0;
+  transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.25s ease-out;
+  z-index: 5000;
+}
+
+.ring-popup.show {
+  transform: translate(-50%, -50%) scale(1.15);
+  opacity: 1;
 }
 
 /* Altitude / Speed HUD */
@@ -97,20 +164,20 @@ body, html {
   position: absolute;
   bottom: 16px;
   left: 16px;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 900;
   color: #ffffff;
-  background: rgba(26, 60, 72, 0.75);
+  background: rgba(26, 60, 72, 0.8);
   padding: 6px 12px;
   border-radius: 5px;
   letter-spacing: 1px;
   pointer-events: none;
-  border: 1px solid rgba(244, 208, 63, 0.4);
+  border: 1px solid rgba(244, 208, 63, 0.5);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
   z-index: 10;
 }
 
-/* --- FULLSCREEN TOUCHSCREEN CONTROLS OVERLAY --- */
+/* Mobile Controls Overlay */
 #mobile-controls {
   position: fixed;
   top: 0;
@@ -119,48 +186,47 @@ body, html {
   height: 100%;
   pointer-events: none;
   z-index: 3000;
-  display: none; /* Displayed when mobile-mode is active */
+  display: none;
   justify-content: space-between;
   align-items: flex-end;
   padding: 16px;
   box-sizing: border-box;
 }
 
-/* Enabled in Fullscreen or on Mobile Viewports */
 body.mobile-mode #mobile-controls {
   display: flex;
 }
 
 .mobile-control-btn {
   pointer-events: auto;
-  width: 66px;
-  height: 66px;
-  background: radial-gradient(circle, rgba(46, 204, 113, 0.25) 0%, rgba(27, 97, 43, 0.6) 80%);
-  border: 2px solid rgba(244, 208, 63, 0.75);
+  width: 64px;
+  height: 64px;
+  background: radial-gradient(circle, rgba(46, 204, 113, 0.3) 0%, rgba(27, 97, 43, 0.7) 80%);
+  border: 2px solid rgba(244, 208, 63, 0.8);
   border-radius: 50%;
   color: #fff6dd;
-  font-size: 26px;
+  font-size: 24px;
   display: flex;
   justify-content: center;
   align-items: center;
   user-select: none;
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
-  box-shadow: 0 0 14px rgba(46, 204, 113, 0.4), inset 0 0 10px rgba(244, 208, 63, 0.2);
+  box-shadow: 0 0 14px rgba(46, 204, 113, 0.4);
   transition: transform 0.08s, background 0.08s;
   -webkit-tap-highlight-color: transparent;
 }
 
 .mobile-control-btn.btn-sm {
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
   font-size: 18px;
-  background: rgba(26, 60, 72, 0.65);
-  margin-bottom: 6px;
+  background: rgba(26, 60, 72, 0.75);
+  margin-bottom: 4px;
 }
 
 .mobile-control-btn:active {
-  background: radial-gradient(circle, rgba(241, 196, 15, 0.5) 0%, rgba(46, 125, 50, 0.8) 100%);
+  background: radial-gradient(circle, rgba(241, 196, 15, 0.6) 0%, rgba(46, 125, 50, 0.9) 100%);
   border-color: #ffffff;
   transform: scale(0.92);
 }
@@ -176,12 +242,12 @@ body.mobile-mode #mobile-controls {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 6px;
+  gap: 8px;
   margin-right: 6px;
   margin-bottom: 8px;
 }
 
-/* --- TROPICAL GREEN & YELLOW VIRTUAL JOYSTICK --- */
+/* Virtual Joystick */
 .joystick-container {
   position: fixed;
   pointer-events: none;

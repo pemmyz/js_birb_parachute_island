@@ -20,16 +20,52 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 container.appendChild(renderer.domElement);
 
 // --- 2. PS1 Tropical Lighting ---
-const ambientLight = new THREE.AmbientLight(0xdcf4ff, 0.7);
+const ambientLight = new THREE.AmbientLight(0xdcf4ff, 0.75);
 scene.add(ambientLight);
 
-const sunLight = new THREE.DirectionalLight(0xfff6dd, 1.0);
+const sunLight = new THREE.DirectionalLight(0xfff6dd, 1.1);
 sunLight.position.set(200, 450, 250);
 scene.add(sunLight);
 
 const fillLight = new THREE.DirectionalLight(0x78b8d0, 0.4);
 fillLight.position.set(-200, -50, -200);
 scene.add(fillLight);
+
+// --- Audio Synthesizer (GTA / PS1 Checkpoint Chime) ---
+let audioCtx = null;
+function playRingChime() {
+  try {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    const t = audioCtx.currentTime;
+
+    const osc1 = audioCtx.createOscillator();
+    const gain1 = audioCtx.createGain();
+    osc1.type = 'triangle';
+    osc1.frequency.setValueAtTime(587.33, t); // D5
+    gain1.gain.setValueAtTime(0.25, t);
+    gain1.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+    osc1.connect(gain1);
+    gain1.connect(audioCtx.destination);
+    osc1.start(t);
+    osc1.stop(t + 0.18);
+
+    const osc2 = audioCtx.createOscillator();
+    const gain2 = audioCtx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(880, t + 0.1); // A5
+    gain2.gain.setValueAtTime(0.3, t + 0.1);
+    gain2.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+    osc2.connect(gain2);
+    gain2.connect(audioCtx.destination);
+    osc2.start(t + 0.1);
+    osc2.stop(t + 0.45);
+  } catch (err) {}
+}
 
 // --- 3. Paraglider + Bird Assembly ---
 const gliderRoot = new THREE.Group();
@@ -210,7 +246,152 @@ function updateRopes() {
   }
 }
 
-// --- 5. Massive Tropical Island Terrain ---
+// --- 5. Navigational 3D Arrow (Points to Next Vortex) ---
+const arrowAnchorGroup = new THREE.Group();
+scene.add(arrowAnchorGroup);
+
+const arrowMeshGroup = new THREE.Group();
+arrowAnchorGroup.add(arrowMeshGroup);
+
+const arrowHeadGeo = new THREE.ConeGeometry(0.55, 1.3, 5);
+arrowHeadGeo.rotateX(Math.PI / 2);
+const arrowHeadMat = new THREE.MeshBasicMaterial({ color: 0xffe600 });
+const arrowHead = new THREE.Mesh(arrowHeadGeo, arrowHeadMat);
+arrowHead.position.set(0, 0, 0.7);
+
+const arrowShaftGeo = new THREE.BoxGeometry(0.26, 0.26, 0.9);
+const arrowShaftMat = new THREE.MeshBasicMaterial({ color: 0xf39c12 });
+const arrowShaft = new THREE.Mesh(arrowShaftGeo, arrowShaftMat);
+arrowShaft.position.set(0, 0, -0.2);
+
+arrowMeshGroup.add(arrowHead, arrowShaft);
+
+// --- 6. GTA Yellow Vortex Checkpoint Rings ---
+const vortexGroup = new THREE.Group();
+scene.add(vortexGroup);
+
+const vortexWaypoints = [
+  new THREE.Vector3(0, 180, 330),
+  new THREE.Vector3(-80, 160, 190),
+  new THREE.Vector3(-180, 145, 50),
+  new THREE.Vector3(-140, 175, -100),
+  new THREE.Vector3(-45, 225, -75),
+  new THREE.Vector3(65, 190, -125),
+  new THREE.Vector3(180, 140, -40),
+  new THREE.Vector3(210, 95, 90),
+  new THREE.Vector3(130, 115, 235),
+  new THREE.Vector3(30, 150, 360),
+  new THREE.Vector3(-90, 180, 420),
+  new THREE.Vector3(-10, 190, 480)
+];
+
+const vortexRings = [];
+let currentRingIndex = 0;
+let totalScore = 0;
+
+const ringOuterGeo = new THREE.TorusGeometry(8.5, 0.55, 6, 20);
+const ringInnerGeo = new THREE.TorusGeometry(7.6, 0.22, 5, 16);
+
+vortexWaypoints.forEach((pos, idx) => {
+  const vRing = new THREE.Group();
+  vRing.position.copy(pos);
+
+  const outerMat = new THREE.MeshLambertMaterial({
+    color: 0xffd700,
+    emissive: 0xffb700,
+    emissiveIntensity: 0.45,
+    flatShading: true,
+    side: THREE.DoubleSide
+  });
+  const outerMesh = new THREE.Mesh(ringOuterGeo, outerMat);
+
+  const innerMat = new THREE.MeshBasicMaterial({
+    color: 0xffea00,
+    wireframe: true,
+    transparent: true,
+    opacity: 0.65
+  });
+  const innerMesh = new THREE.Mesh(ringInnerGeo, innerMat);
+
+  const spokesGroup = new THREE.Group();
+  for (let s = 0; s < 4; s++) {
+    const spokeGeo = new THREE.ConeGeometry(0.7, 2.2, 4);
+    spokeGeo.rotateZ(Math.PI);
+    const spokeMat = new THREE.MeshBasicMaterial({ color: 0xffa500 });
+    const spoke = new THREE.Mesh(spokeGeo, spokeMat);
+    const ang = (s / 4) * Math.PI * 2;
+    spoke.position.set(Math.cos(ang) * 7.5, Math.sin(ang) * 7.5, 0);
+    spoke.rotation.z = ang + Math.PI / 2;
+    spokesGroup.add(spoke);
+  }
+
+  vRing.add(outerMesh, innerMesh, spokesGroup);
+  const nextTarget = vortexWaypoints[(idx + 1) % vortexWaypoints.length];
+  vRing.lookAt(nextTarget);
+
+  vortexGroup.add(vRing);
+  vortexRings.push({
+    group: vRing,
+    outerMesh,
+    innerMesh,
+    spokesGroup,
+    pos: pos.clone(),
+    radius: 9.2
+  });
+});
+
+function updateVortexStates(t) {
+  const activeRing = vortexRings[currentRingIndex];
+
+  vortexRings.forEach((ring, idx) => {
+    ring.innerMesh.rotation.z = -t * 2.8;
+    ring.spokesGroup.rotation.z = t * 2.2;
+
+    if (idx === currentRingIndex) {
+      const pulse = 1.0 + Math.sin(t * 8.0) * 0.12;
+      ring.group.scale.set(pulse, pulse, pulse);
+      ring.outerMesh.material.color.setHex(0xffff00);
+      ring.outerMesh.material.emissiveIntensity = 0.8;
+      ring.group.visible = true;
+    } else if (idx === (currentRingIndex + 1) % vortexRings.length) {
+      ring.group.scale.set(0.9, 0.9, 0.9);
+      ring.outerMesh.material.color.setHex(0xe67e22);
+      ring.outerMesh.material.emissiveIntensity = 0.2;
+      ring.group.visible = true;
+    } else {
+      ring.group.scale.set(0.85, 0.85, 0.85);
+      ring.outerMesh.material.color.setHex(0xd4ac0d);
+      ring.outerMesh.material.emissiveIntensity = 0.1;
+      ring.group.visible = true;
+    }
+  });
+
+  if (activeRing) {
+    const arrowPos = flight.pos.clone().add(new THREE.Vector3(0, 3.6, 0));
+    arrowAnchorGroup.position.copy(arrowPos);
+
+    arrowMeshGroup.position.y = Math.sin(t * 5.0) * 0.15;
+    arrowMeshGroup.rotation.z = Math.sin(t * 3.5) * 0.15;
+    arrowAnchorGroup.lookAt(activeRing.pos);
+
+    const dist = Math.round(flight.pos.distanceTo(activeRing.pos));
+    const distEl = document.getElementById('dist-val');
+    if (distEl) distEl.innerText = `${dist}m`;
+  }
+}
+
+function triggerRingPassPopup() {
+  const popup = document.getElementById('ring-popup');
+  if (popup) {
+    popup.classList.add('show');
+    clearTimeout(popup._timer);
+    popup._timer = setTimeout(() => {
+      popup.classList.remove('show');
+    }, 850);
+  }
+}
+
+// --- 7. Massive Tropical Island Terrain ---
 const islandGroup = new THREE.Group();
 scene.add(islandGroup);
 
@@ -318,7 +499,7 @@ const oceanMesh = new THREE.Mesh(oceanGeo, new THREE.MeshLambertMaterial({
 }));
 scene.add(oceanMesh);
 
-// --- 6. Floating Virtual Joystick Module ---
+// --- 8. Floating Virtual Joystick Module ---
 const VirtualJoystick = (function () {
   let activePointerId = null;
   let startX = 0;
@@ -391,7 +572,7 @@ const VirtualJoystick = (function () {
 
     const strength = clampedDist / maxRadius;
     vector.x = Math.cos(angle) * strength;
-    vector.y = -(Math.sin(angle) * strength); // UP is positive (+1.0)
+    vector.y = deltaY / maxRadius;
   }
 
   function onPointerUp(e) {
@@ -413,14 +594,33 @@ const VirtualJoystick = (function () {
 
 VirtualJoystick.init({ maxRadius: 70 });
 
-// --- 7. Mobile Mode & Control Listeners ---
-const keys = { ArrowLeft: false, ArrowRight: false, ArrowUp: false, ArrowDown: false, a: false, d: false, w: false, s: false };
+// --- 9. Mobile Mode, Invert Y & Control Listeners ---
+let invertY = false;
+
+const keys = {
+  ArrowLeft: false, ArrowRight: false, ArrowUp: false, ArrowDown: false,
+  a: false, d: false, w: false, s: false
+};
 
 const mobileToggleBtn = document.getElementById('mobile-btn');
+const invertToggleBtn = document.getElementById('invert-btn');
 const mobileLeftBtn = document.getElementById('mobile-left');
 const mobileRightBtn = document.getElementById('mobile-right');
 const mobileUpBtn = document.getElementById('mobile-up');
+const mobileDownBtn = document.getElementById('mobile-down');
 const mobileResetBtn = document.getElementById('mobile-reset');
+
+function toggleInvertY() {
+  invertY = !invertY;
+  if (invertToggleBtn) {
+    invertToggleBtn.classList.toggle('active', invertY);
+    invertToggleBtn.innerText = invertY ? '↕ Invert Y: ON' : '↕ Invert Y: OFF';
+  }
+}
+
+if (invertToggleBtn) {
+  invertToggleBtn.addEventListener('click', toggleInvertY);
+}
 
 function checkMobileMode() {
   const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement);
@@ -451,17 +651,15 @@ window.addEventListener('resize', checkMobileMode);
 checkMobileMode();
 
 function setupMobileControls() {
-  const addControlListener = (element, key, onToggle) => {
+  const addControlListener = (element, key) => {
     if (!element) return;
     const press = (e) => {
       if (e.cancelable) e.preventDefault();
       if (key) keys[key] = true;
-      if (onToggle) onToggle(true);
     };
     const release = (e) => {
       if (e.cancelable) e.preventDefault();
       if (key) keys[key] = false;
-      if (onToggle) onToggle(false);
     };
 
     element.addEventListener('pointerdown', press);
@@ -472,28 +670,32 @@ function setupMobileControls() {
 
   addControlListener(mobileLeftBtn, 'ArrowLeft');
   addControlListener(mobileRightBtn, 'ArrowRight');
-  addControlListener(mobileUpBtn, 'ArrowUp', (active) => { flight.isBoosting = active; });
-  addControlListener(mobileResetBtn, null, (active) => { if (active) resetFlight(); });
+  addControlListener(mobileUpBtn, 'ArrowUp');
+  addControlListener(mobileDownBtn, 'ArrowDown');
+  if (mobileResetBtn) {
+    mobileResetBtn.addEventListener('pointerdown', (e) => {
+      if (e.cancelable) e.preventDefault();
+      resetFlight();
+    });
+  }
 }
 setupMobileControls();
 
-// --- 8. Flight Kinematics ---
+// --- 10. Flight Kinematics ---
 const flight = {
   pos: new THREE.Vector3(0, 185, 480),
   yaw: 0.0,
-  pitch: 0.04,
+  pitch: 0.0,
   roll: 0.0,
-  speed: 13.5,
-  sinkRate: 0.85,
+  speed: 14.0,
   steerX: 0,
-  steerY: 0,
-  isBoosting: false
+  steerPitch: 0
 };
 
 const intro = {
   active: true,
   elapsed: 0.0,
-  duration: 4.5,
+  duration: 4.0,
   radius: 10.5,
   height: 2.8
 };
@@ -501,15 +703,15 @@ const intro = {
 function resetFlight() {
   flight.pos.set(0, 185, 480);
   flight.yaw = 0.0;
-  flight.pitch = 0.04;
+  flight.pitch = 0.0;
   flight.roll = 0.0;
+  flight.speed = 14.0;
   flight.steerX = 0;
-  flight.steerY = 0;
+  flight.steerPitch = 0;
   intro.active = true;
   intro.elapsed = 0.0;
 }
 
-// Mouse steering fallback
 let mouseX = 0;
 let mouseY = 0;
 
@@ -520,29 +722,22 @@ window.addEventListener('mousemove', (e) => {
   }
 });
 
-window.addEventListener('mousedown', (e) => {
-  if (e.button === 0 && !e.target.closest('button')) flight.isBoosting = true;
-});
-
-window.addEventListener('mouseup', () => {
-  flight.isBoosting = false;
-});
-
 window.addEventListener('keydown', (e) => {
   if (keys[e.key] !== undefined) keys[e.key] = true;
   if (e.key === 'r' || e.key === 'R') resetFlight();
-  if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') flight.isBoosting = true;
+  if (e.key === 'i' || e.key === 'I') toggleInvertY();
 });
 
 window.addEventListener('keyup', (e) => {
   if (keys[e.key] !== undefined) keys[e.key] = false;
-  if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') flight.isBoosting = false;
 });
 
-// --- 9. Main Render Loop ---
+// --- 11. Main Render Loop ---
 const clock = new THREE.Clock();
 const altDisplay = document.getElementById('alt-val');
 const spdDisplay = document.getElementById('spd-val');
+const ringDisplay = document.getElementById('ring-val');
+const scoreDisplay = document.getElementById('score-val');
 
 function animate() {
   requestAnimationFrame(animate);
@@ -550,47 +745,62 @@ function animate() {
   const delta = Math.min(clock.getDelta(), 0.1);
   const t = clock.getElapsedTime();
 
-  // 1. Steering inputs (Joystick -> On-Screen Buttons/Keys -> Mouse)
-  let targetInputX = 0;
-  let targetInputY = 0;
+  let targetTurn = 0;
+  let targetPitch = 0;
 
   if (VirtualJoystick.isActive()) {
     const joy = VirtualJoystick.getVector();
-    targetInputX = joy.x;
-    targetInputY = joy.y;
-  } else if (keys.ArrowLeft || keys.a || keys.ArrowRight || keys.d || keys.ArrowDown || keys.s) {
-    if (keys.ArrowLeft || keys.a) targetInputX -= 1.0;
-    if (keys.ArrowRight || keys.d) targetInputX += 1.0;
-    if (keys.ArrowDown || keys.s) targetInputY -= 0.8;
+    targetTurn = joy.x;
+    targetPitch = -joy.y * 1.35;
+  } else if (keys.ArrowLeft || keys.a || keys.ArrowRight || keys.d ||
+             keys.ArrowUp || keys.w || keys.ArrowDown || keys.s) {
+    if (keys.ArrowLeft || keys.a) targetTurn -= 1.0;
+    if (keys.ArrowRight || keys.d) targetTurn += 1.0;
+    if (keys.ArrowUp || keys.w) targetPitch += 1.0;
+    if (keys.ArrowDown || keys.s) targetPitch -= 1.0;
   } else {
-    targetInputX = mouseX;
-    targetInputY = -mouseY;
+    targetTurn = mouseX;
+    targetPitch = -mouseY; 
   }
 
-  flight.steerX = THREE.MathUtils.lerp(flight.steerX, targetInputX, delta * 3.5);
-  flight.steerY = THREE.MathUtils.lerp(flight.steerY, targetInputY, delta * 3.5);
+  if (invertY) {
+    targetPitch = -targetPitch;
+  }
 
-  // 2. Flight Kinematics
+  flight.steerX = THREE.MathUtils.lerp(flight.steerX, targetTurn, delta * 3.5);
+  flight.steerPitch = THREE.MathUtils.lerp(flight.steerPitch, targetPitch, delta * 3.5);
+
+  // Flight Kinematics
   flight.yaw -= flight.steerX * 0.95 * delta;
   flight.roll = THREE.MathUtils.lerp(flight.roll, -flight.steerX * 0.55, delta * 4.0);
-  flight.pitch = THREE.MathUtils.lerp(flight.pitch, flight.steerY * 0.35, delta * 3.0);
+
+  // Pitch calculation: positive = climb, negative = dive
+  const clampedPitchTarget = THREE.MathUtils.clamp(flight.steerPitch * 0.55, -0.65, 0.55);
+  flight.pitch = THREE.MathUtils.lerp(flight.pitch, clampedPitchTarget, delta * 3.8);
 
   const forwardX = -Math.sin(flight.yaw);
   const forwardZ = -Math.cos(flight.yaw);
 
-  flight.pos.x += forwardX * flight.speed * delta;
-  flight.pos.z += forwardZ * flight.speed * delta;
+  const currentAirspeed = flight.speed - (flight.pitch * 5.0);
+  flight.pos.x += forwardX * currentAirspeed * delta;
+  flight.pos.z += forwardZ * currentAirspeed * delta;
 
-  const lift = flight.isBoosting ? 9.5 : 0.0;
-  flight.pos.y += (flight.pitch * 6.0 - flight.sinkRate + lift) * delta;
-  if (flight.pos.y < 8) flight.pos.y = 8;
+  // Positive pitch climbs up, negative pitch dives down
+  const verticalSpeed = (flight.pitch * 16.5) - 0.75; 
+  flight.pos.y += verticalSpeed * delta;
 
+  // Floor limit
+  if (flight.pos.y < 7.5) flight.pos.y = 7.5;
+
+  // Paraglider Mesh Orientation
   gliderRoot.position.copy(flight.pos);
   gliderRoot.rotation.set(0, flight.yaw, 0, 'YXZ');
   gliderRoot.rotateZ(flight.roll);
-  gliderRoot.rotateX(-flight.pitch);
 
-  // 3. Paraglider Sway & Physics
+  // Leans forwards (nose down) to fly down, leans backwards (nose up) to fly up
+  gliderRoot.rotateX(flight.pitch);
+
+  // Paraglider Sway & Physics
   paragliderGroup.position.y = Math.sin(t * 1.8) * 0.08;
   birdGroup.rotation.z = -flight.roll * 0.65 + Math.sin(t * 1.2) * 0.04;
   birdGroup.rotation.x = Math.sin(t * 1.5) * 0.03;
@@ -599,7 +809,23 @@ function animate() {
   gliderRoot.updateMatrixWorld(true);
   updateRopes();
 
-  // 4. Ocean Animation
+  // Check GTA Vortex Ring Hit Collision
+  const activeRing = vortexRings[currentRingIndex];
+  if (activeRing && flight.pos.distanceTo(activeRing.pos) < activeRing.radius) {
+    playRingChime();
+    triggerRingPassPopup();
+
+    totalScore += 100;
+    currentRingIndex = (currentRingIndex + 1) % vortexRings.length;
+
+    if (scoreDisplay) scoreDisplay.innerText = `${totalScore}`;
+    if (ringDisplay) ringDisplay.innerText = `${currentRingIndex + 1} / ${vortexRings.length}`;
+  }
+
+  // Update Vortex Checkpoint Visuals and 3D Arrow
+  updateVortexStates(t);
+
+  // Ocean Animation
   const oceanPos = oceanGeo.attributes.position;
   for (let i = 0; i < oceanPos.count; i++) {
     const ox = oceanPos.getX(i);
@@ -608,7 +834,7 @@ function animate() {
   }
   oceanPos.needsUpdate = true;
 
-  // 5. Camera Controller
+  // Camera Controller
   const standardChaseOffset = new THREE.Vector3(0, 3.2, 10.5);
   standardChaseOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), flight.yaw);
   const targetCamPos = flight.pos.clone().add(standardChaseOffset);
@@ -634,26 +860,28 @@ function animate() {
     camera.lookAt(flight.pos.clone().add(new THREE.Vector3(0, 0.6, 0)));
   } else {
     camera.position.lerp(targetCamPos, delta * 4.5);
-    const lookAheadPoint = flight.pos.clone().add(new THREE.Vector3(forwardX * 18, -1.2, forwardZ * 18));
+    const lookAheadPoint = flight.pos.clone().add(
+      new THREE.Vector3(forwardX * 20, flight.pitch * 10 - 1.0, forwardZ * 20)
+    );
     camera.lookAt(lookAheadPoint);
   }
 
-  // 6. HUD
+  // HUD updates
   if (altDisplay && spdDisplay) {
     altDisplay.innerText = `ALT: ${Math.round(flight.pos.y)}m`;
-    spdDisplay.innerText = `SPD: ${Math.round(flight.speed * 1.8)} km/h`;
+    spdDisplay.innerText = `SPD: ${Math.round(currentAirspeed * 1.8)} km/h`;
   }
 
   renderer.render(scene, camera);
 }
 
-// --- 10. Dynamic Window Resize Handler ---
+// Window Resize Handler
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// Start flight
+// Initialize and start flight
 resetFlight();
 animate();

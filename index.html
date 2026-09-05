@@ -3,31 +3,44 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>PS1 Tropical Bird Paraglider</title>
+  <title>PS1 Tropical Bird Paraglider - GTA Vortex Challenge</title>
   <link rel="stylesheet" href="style.css" />
   <!-- Three.js via CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
-  <!-- Fullscreen Toggle Button (Top-Left) -->
-  <button id="mobile-btn" class="no-joystick">📱 Fullscreen</button>
+  <!-- Top Bar Controls (Top-Left) -->
+  <div id="top-left-controls">
+    <button id="mobile-btn" class="top-bar-btn no-joystick">📱 Fullscreen</button>
+    <button id="invert-btn" class="top-bar-btn no-joystick">↕ Invert Y: OFF</button>
+  </div>
 
   <div id="canvas-container"></div>
   
-  <!-- UI Text (Positioned below the Fullscreen button) -->
+  <!-- UI Text -->
   <div id="ui-overlay">
     <h1>PARABIRD '96</h1>
-    <p>Tropical Island Flight</p>
+    <p>GTA Island Vortex Flight</p>
     <div class="controls-hint">
-      Touch/Drag for Joystick &bull; ▲ or Hold Click for Thermal Lift &bull; [R] Reset
+      Joystick/Buttons: UP to Fly UP 🡅 &bull; DOWN to Fly DOWN 🡇 &bull; [I] Invert Y
     </div>
   </div>
 
-  <div id="altitude-hud">
-    <span id="alt-val">ALT: 180m</span> | <span id="spd-val">SPD: 24 km/h</span>
+  <!-- Flight Status & Score HUD -->
+  <div id="score-hud">
+    <div id="ring-badge">VORTEX: <span id="ring-val">1 / 12</span></div>
+    <div id="score-badge">PTS: <span id="score-val">0</span></div>
+    <div id="dist-badge">NEXT: <span id="dist-val">--m</span></div>
   </div>
 
-  <!-- Mobile Touch Control Buttons (Active in Fullscreen/Mobile Mode) -->
+  <div id="altitude-hud">
+    <span id="alt-val">ALT: 185m</span> | <span id="spd-val">SPD: 24 km/h</span>
+  </div>
+
+  <!-- Ring Collected Splash Banner -->
+  <div id="ring-popup" class="ring-popup">+100 PTS!</div>
+
+  <!-- Mobile Touch Control Buttons -->
   <div id="mobile-controls">
     <div id="mobile-dpad">
       <button id="mobile-left" class="mobile-control-btn no-joystick">◀</button>
@@ -36,6 +49,7 @@
     <div id="mobile-action">
       <button id="mobile-reset" class="mobile-control-btn btn-sm no-joystick">↺</button>
       <button id="mobile-up" class="mobile-control-btn no-joystick">▲</button>
+      <button id="mobile-down" class="mobile-control-btn no-joystick">▼</button>
     </div>
   </div>
 
