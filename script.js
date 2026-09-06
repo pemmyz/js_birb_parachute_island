@@ -152,10 +152,20 @@ const bodyGeo = new THREE.IcosahedronGeometry(0.7, 1);
 bodyGeo.scale(0.85, 0.8, 1.15);
 birdGroup.add(new THREE.Mesh(bodyGeo, new THREE.MeshLambertMaterial({ color: 0x2e7d32, flatShading: true })));
 
-const beakGeo = new THREE.ConeGeometry(0.18, 0.85, 4);
-beakGeo.rotateX(-Math.PI / 2);
-const beakMesh = new THREE.Mesh(beakGeo, new THREE.MeshLambertMaterial({ color: 0xf1c40f, flatShading: true }));
-beakMesh.position.set(0, -0.05, -0.95);
+// Compact Beak angled 45 degrees downward
+const beakLength = 0.85;
+const beakRadius = 0.16;
+const beakGeo = new THREE.ConeGeometry(beakRadius, beakLength, 4);
+// Translate pivot to base, then rotate 135 deg around X (-Z forward, -Y downward = 45 deg slope)
+beakGeo.translate(0, beakLength / 2, 0);
+beakGeo.rotateX(-Math.PI * 0.75);
+beakGeo.computeVertexNormals();
+
+const beakMesh = new THREE.Mesh(
+  beakGeo,
+  new THREE.MeshLambertMaterial({ color: 0xf1c40f, flatShading: true })
+);
+beakMesh.position.set(0, 0.02, -0.74);
 birdGroup.add(beakMesh);
 
 // Eyes
@@ -246,7 +256,7 @@ function updateRopes() {
   }
 }
 
-// --- 5. Navigational 3D Arrow (Points to Next Vortex) ---
+// --- 5. Navigational 3D Arrow (With Low-Poly Shading) ---
 const arrowAnchorGroup = new THREE.Group();
 scene.add(arrowAnchorGroup);
 
@@ -255,12 +265,24 @@ arrowAnchorGroup.add(arrowMeshGroup);
 
 const arrowHeadGeo = new THREE.ConeGeometry(0.55, 1.3, 5);
 arrowHeadGeo.rotateX(Math.PI / 2);
-const arrowHeadMat = new THREE.MeshBasicMaterial({ color: 0xffe600 });
+arrowHeadGeo.computeVertexNormals();
+
+const arrowHeadMat = new THREE.MeshLambertMaterial({
+  color: 0xffe600,
+  emissive: 0x473900,
+  flatShading: true
+});
 const arrowHead = new THREE.Mesh(arrowHeadGeo, arrowHeadMat);
 arrowHead.position.set(0, 0, 0.7);
 
 const arrowShaftGeo = new THREE.BoxGeometry(0.26, 0.26, 0.9);
-const arrowShaftMat = new THREE.MeshBasicMaterial({ color: 0xf39c12 });
+arrowShaftGeo.computeVertexNormals();
+
+const arrowShaftMat = new THREE.MeshLambertMaterial({
+  color: 0xf39c12,
+  emissive: 0x3d2000,
+  flatShading: true
+});
 const arrowShaft = new THREE.Mesh(arrowShaftGeo, arrowShaftMat);
 arrowShaft.position.set(0, 0, -0.2);
 
