@@ -3,57 +3,142 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>PS1 Tropical Bird Paraglider - GTA Vortex Challenge</title>
+  <title>PS1 Tropical Bird Paraglider - Reverse Co-Op & Speedway</title>
   <link rel="stylesheet" href="style.css" />
   <!-- Three.js via CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
-<body>
-  <!-- Top Bar Controls (Top-Left) -->
-  <div id="top-left-controls">
-    <button id="mobile-btn" class="top-bar-btn no-joystick">📱 Fullscreen</button>
-    <button id="invert-btn" class="top-bar-btn no-joystick">↕ Invert Y: OFF</button>
-  </div>
+<body class="mode-menu">
+  <!-- START / OPTIONS MENU MODAL -->
+  <div id="start-menu-modal">
+    <div class="menu-card">
+      <div class="menu-header">
+        <div class="badge-tag">PS1 ARCADE SPEEDWAY</div>
+        <h1 class="game-title">PARABIRD '96</h1>
+        <p class="game-subtitle">GTA ISLAND VORTEX FLIGHT</p>
+      </div>
 
-  <div id="canvas-container"></div>
-  
-  <!-- UI Text -->
-  <div id="ui-overlay">
-    <h1>PARABIRD '96</h1>
-    <p>GTA Island Vortex Flight</p>
-    <div class="controls-hint">
-      Joystick/Buttons: UP to Fly UP 🡅 &bull; DOWN to Fly DOWN 🡇 &bull; [I] Invert Y
+      <div class="menu-options">
+        <button id="btn-mode-single" class="menu-btn single-btn no-joystick">
+          <div class="btn-icon">🪂</div>
+          <div class="btn-text">
+            <span class="btn-main">1 PLAYER SOLO</span>
+            <span class="btn-sub">Fullscreen Flight • Mouse / Keys / Gamepad</span>
+          </div>
+        </button>
+
+        <button id="btn-mode-coop" class="menu-btn coop-btn no-joystick">
+          <div class="btn-icon">🔄</div>
+          <div class="btn-text">
+            <span class="btn-main">2P REVERSE CO-OP</span>
+            <span class="btn-sub">P1 starts Gate 1 (Forward) &bull; P2 starts Gate 12 (Reverse) &bull; Meet in the middle!</span>
+          </div>
+        </button>
+
+        <button id="btn-mode-race" class="menu-btn race-btn no-joystick">
+          <div class="btn-icon">🏁</div>
+          <div class="btn-text">
+            <span class="btn-main">2P COMPETITION RACE</span>
+            <span class="btn-sub">Split Screen • Both start at Gate 1 • Who reaches 12 first!</span>
+          </div>
+        </button>
+      </div>
+
+      <div class="menu-footer">
+        <span>Controls: P1 (Mouse / Touch / Arrows) &bull; P2 (Keys WASD / Gamepad)</span>
+      </div>
     </div>
   </div>
 
-  <!-- Flight Status & Score HUD -->
-  <div id="score-hud">
-    <div id="ring-badge">VORTEX: <span id="ring-val">1 / 12</span></div>
-    <div id="score-badge">PTS: <span id="score-val">0</span></div>
-    <div id="dist-badge">NEXT: <span id="dist-val">--m</span></div>
+  <!-- FLOATING CONTROL ISLAND: Top-Left Corner (Fullscreen is 1st) -->
+  <div id="mid-controls-bar">
+    <button id="mobile-btn" class="mid-bar-btn no-joystick">📱 Fullscreen</button>
+    <button id="menu-toggle-btn" class="mid-bar-btn no-joystick">🎮 Mode / Options</button>
+    <button id="invert-btn" class="mid-bar-btn no-joystick">↕ Invert Pitch: OFF</button>
+    <button id="reset-btn" class="mid-bar-btn no-joystick">↺ Reset Match</button>
   </div>
 
-  <div id="altitude-hud">
-    <span id="alt-val">ALT: 185m</span> | <span id="spd-val">SPD: 24 km/h</span>
+  <!-- Central Split-Screen Border Line -->
+  <div id="split-divider"></div>
+
+  <!-- Three.js Canvas Container -->
+  <div id="canvas-container"></div>
+
+  <!-- PLAYER 1 OVERLAY (LEFT OR FULL SCREEN) -->
+  <div class="player-panel left-panel">
+    <div class="player-header">
+      <div class="player-tag p1-tag" id="p1-tag-label">P1 • EMERALD</div>
+      <div class="controls-sub" id="p1-control-hint">Mouse / Touch / Arrows</div>
+      <div class="route-sub" id="p1-route-hint">Route: Gate 1 ➔ 12 (Forward)</div>
+    </div>
+    
+    <div class="hud-stats">
+      <div class="stat-badge timer-badge" id="p1-timer-badge">TIME: <span id="p1-time-val">00:00.0</span></div>
+      <div class="stat-badge vortex-badge">GATE: <span id="p1-ring-val">Gate #1 (0/12)</span></div>
+      <div class="stat-badge score-badge">PTS: <span id="p1-score-val">0</span></div>
+      <div class="stat-badge dist-badge">NEXT: <span id="p1-dist-val">--m</span></div>
+    </div>
+
+    <div class="flight-telemetry" id="p1-flight-telemetry">
+      <span id="p1-alt-val">ALT: 185m</span> | <span id="p1-spd-val">SPD: 24 km/h</span>
+    </div>
+    
+    <div id="p1-ring-popup" class="ring-popup">+100 PTS!</div>
+    <div id="p1-winner-banner" class="winner-banner">👑 WINNER!</div>
   </div>
 
-  <!-- Ring Collected Splash Banner -->
-  <div id="ring-popup" class="ring-popup">+100 PTS!</div>
+  <!-- PLAYER 2 OVERLAY (RIGHT SCREEN - 2P MODES) -->
+  <div class="player-panel right-panel">
+    <div class="player-header">
+      <div class="player-tag p2-tag">P2 • SAPPHIRE</div>
+      <div class="controls-sub" id="p2-control-indicator">Keys WASD / Gamepad</div>
+      <div class="route-sub" id="p2-route-hint">Route: Gate 12 ➔ 1 (Reverse)</div>
+    </div>
+    
+    <div class="hud-stats">
+      <div class="stat-badge timer-badge" id="p2-timer-badge">TIME: <span id="p2-time-val">00:00.0</span></div>
+      <div class="stat-badge vortex-badge">GATE: <span id="p2-ring-val">Gate #12 (0/12)</span></div>
+      <div class="stat-badge score-badge">PTS: <span id="p2-score-val">0</span></div>
+      <div class="stat-badge dist-badge">NEXT: <span id="p2-dist-val">--m</span></div>
+    </div>
 
-  <!-- Mobile Touch Control Buttons -->
+    <div class="flight-telemetry" id="p2-flight-telemetry">
+      <span id="p2-alt-val">ALT: 185m</span> | <span id="p2-spd-val">SPD: 24 km/h</span>
+    </div>
+
+    <div id="p2-ring-popup" class="ring-popup">+100 PTS!</div>
+    <div id="p2-winner-banner" class="winner-banner">👑 WINNER!</div>
+  </div>
+
+  <!-- Global Race/Co-Op Finish Notification Modal -->
+  <div id="race-finish-modal" class="race-finish-modal">
+    <div class="race-result-box">
+      <h2 id="race-winner-title">MISSION COMPLETE!</h2>
+      <p id="race-winner-subtitle">Both pilots converged and conquered the island!</p>
+      <div class="race-times">
+        <div class="time-row">P1 Time: <span id="p1-finish-time">--:--.-</span></div>
+        <div class="time-row">P2 Time: <span id="p2-finish-time">--:--.-</span></div>
+      </div>
+      <div class="modal-actions">
+        <button id="btn-rematch" class="menu-btn rematch-btn no-joystick">⚡ Fly Again</button>
+        <button id="btn-back-menu" class="menu-btn menu-return-btn no-joystick">🎮 Mode Select</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile Touch Controls (Assigned to P1) -->
   <div id="mobile-controls">
     <div id="mobile-dpad">
       <button id="mobile-left" class="mobile-control-btn no-joystick">◀</button>
       <button id="mobile-right" class="mobile-control-btn no-joystick">▶</button>
     </div>
     <div id="mobile-action">
-      <button id="mobile-reset" class="mobile-control-btn btn-sm no-joystick">↺</button>
       <button id="mobile-up" class="mobile-control-btn no-joystick">▲</button>
       <button id="mobile-down" class="mobile-control-btn no-joystick">▼</button>
     </div>
   </div>
 
-  <!-- Floating Virtual Joystick -->
+  <!-- Floating Virtual Joystick (Assigned to P1) -->
   <div id="virtual-joystick" class="joystick-container">
     <div class="joystick-base">
       <div class="joystick-ring"></div>
