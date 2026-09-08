@@ -57,7 +57,7 @@ body:not(.mode-menu) #start-menu-modal {
   border: 3px solid #f1c40f;
   border-radius: 12px;
   box-shadow: 0 0 35px rgba(241, 196, 15, 0.35), 0 12px 40px rgba(0, 0, 0, 0.8);
-  padding: 26px 22px;
+  padding: 24px 22px;
   text-align: center;
   animation: cardEnter 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
@@ -93,15 +93,93 @@ body:not(.mode-menu) #start-menu-modal {
   font-size: 0.8rem;
   font-weight: bold;
   letter-spacing: 1.5px;
-  margin-bottom: 20px;
+  margin-bottom: 14px;
   text-shadow: 1px 1px 0 #000;
 }
 
+/* =========================================
+   CONTROLLER PAIRING PANEL
+   ========================================= */
+.controller-pairing-box {
+  background: rgba(8, 20, 28, 0.85);
+  border: 1.5px solid rgba(244, 208, 63, 0.6);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.pairing-title {
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: #f4d03f;
+  margin-bottom: 8px;
+  text-shadow: 1px 1px 0 #000;
+}
+
+.pairing-slots {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.pad-slot {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 0.68rem;
+  font-weight: bold;
+  border: 1.5px dashed rgba(255, 255, 255, 0.3);
+  background: rgba(4, 12, 18, 0.6);
+  transition: all 0.25s ease;
+}
+
+.pad-slot .pad-label {
+  font-weight: 900;
+  letter-spacing: 0.5px;
+}
+
+.pad-slot.waiting {
+  border-color: #f39c12;
+  color: #ffeaa7;
+  animation: pulsePad 1.6s infinite ease-in-out;
+}
+
+.pad-slot.connected.p1-connected {
+  border-color: #2ecc71;
+  border-style: solid;
+  background: rgba(39, 174, 96, 0.25);
+  color: #55efc4;
+  box-shadow: 0 0 10px rgba(46, 204, 113, 0.35);
+  animation: none;
+}
+
+.pad-slot.connected.p2-connected {
+  border-color: #3498db;
+  border-style: solid;
+  background: rgba(41, 128, 185, 0.25);
+  color: #74b9ff;
+  box-shadow: 0 0 10px rgba(52, 152, 219, 0.35);
+  animation: none;
+}
+
+@keyframes pulsePad {
+  0%, 100% { opacity: 0.75; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.02); }
+}
+
+/* =========================================
+   MENU BUTTONS
+   ========================================= */
 .menu-options {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
 
 .menu-btn {
@@ -299,7 +377,7 @@ body.mode-coop .right-panel {
   gap: 3px;
 }
 
-/* Push Left Panel UI items lower down so top-left toolbar island doesn't block them */
+/* Push Left Panel UI lower so toolbar doesn't overlap */
 .left-panel .player-header {
   margin-top: 48px;
 }

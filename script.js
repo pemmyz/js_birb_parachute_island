@@ -360,7 +360,7 @@ function updateVortexStates(t) {
   });
 }
 
-// --- 5. Tropical Terrain & Ocean ---
+// --- 5. Tropical Terrain, Ocean & Clouds ---
 const islandGroup = new THREE.Group();
 scene.add(islandGroup);
 
@@ -368,6 +368,23 @@ const terrainSize = 1400;
 const terrainSegs = 85;
 const terrainGeo = new THREE.PlaneGeometry(terrainSize, terrainSize, terrainSegs, terrainSegs);
 terrainGeo.rotateX(-Math.PI / 2);
+
+function getTerrainHeightAt(x, z) {
+  const distFromCenter = Math.hypot(x, z);
+  const islandRadius = 380;
+  let h = -12;
+
+  if (distFromCenter < islandRadius) {
+    const mask = Math.pow(Math.cos((distFromCenter / islandRadius) * (Math.PI / 2)), 1.25);
+    const peak1 = Math.exp(-Math.hypot(x + 50, z - 30) / 95) * 220;
+    const peak2 = Math.exp(-Math.hypot(x - 90, z + 70) / 110) * 190;
+    const ridges = (Math.sin(x * 0.022) * Math.cos(z * 0.022) * 45) +
+                   (Math.sin(x * 0.05 + 1.2) * Math.sin(z * 0.05) * 22);
+    h = (peak1 + peak2 + ridges + 16) * mask;
+  }
+  h += (Math.sin(x * 0.15) * Math.cos(z * 0.15)) * 1.5;
+  return h;
+}
 
 const rockColors = [
   new THREE.Color(0x8a5229), new THREE.Color(0x6e4321),
@@ -383,19 +400,7 @@ const colors = [];
 for (let i = 0; i < posAttr.count; i++) {
   const x = posAttr.getX(i);
   const z = posAttr.getZ(i);
-  const distFromCenter = Math.hypot(x, z);
-  const islandRadius = 380;
-  let h = -12;
-
-  if (distFromCenter < islandRadius) {
-    const mask = Math.pow(Math.cos((distFromCenter / islandRadius) * (Math.PI / 2)), 1.25);
-    const peak1 = Math.exp(-Math.hypot(x + 50, z - 30) / 95) * 220;
-    const peak2 = Math.exp(-Math.hypot(x - 90, z + 70) / 110) * 190;
-    const ridges = (Math.sin(x * 0.022) * Math.cos(z * 0.022) * 45) +
-                   (Math.sin(x * 0.05 + 1.2) * Math.sin(z * 0.05) * 22);
-    h = (peak1 + peak2 + ridges + 16) * mask;
-  }
-  h += (Math.sin(x * 0.15) * Math.cos(z * 0.15)) * 1.5;
+  const h = getTerrainHeightAt(x, z);
   posAttr.setY(i, h);
 
   const vertexCol = new THREE.Color();
@@ -456,7 +461,64 @@ const oceanMesh = new THREE.Mesh(oceanGeo, new THREE.MeshLambertMaterial({
 }));
 scene.add(oceanMesh);
 
-// --- 6. Floating Virtual Joystick (Player 1) ---
+// Procedural See-Through Clouds (Non-Clipping)
+const cloudGroup = new THREE.Group();
+scene.add(cloudGroup);
+
+function spawnRandomClouds(count = 34) {
+  while (cloudGroup.children.length > 0) {
+    cloudGroup.remove(cloudGroup.children[0]);
+  }
+
+  const puffGeo = new THREE.DodecahedronGeometry(1, 1);
+  const cloudMat = new THREE.MeshLambertMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.42,
+    depthWrite: false,
+    flatShading: true
+  });
+
+  for (let i = 0; i < count; i++) {
+    const cluster = new THREE.Group();
+    const dist = 60 + Math.random() * 520;
+    const ang = Math.random() * Math.PI * 2;
+    const x = Math.cos(ang) * dist;
+    const z = Math.sin(ang) * dist;
+
+    // Keep clouds comfortably above terrain to avoid clipping
+    const terrainH = getTerrainHeightAt(x, z);
+    const altitude = Math.max(terrainH + 35 + Math.random() * 45, 175 + Math.random() * 95);
+
+    cluster.position.set(x, altitude, z);
+
+    const puffs = 4 + Math.floor(Math.random() * 5);
+    const clusterScale = 14 + Math.random() * 16;
+
+    for (let p = 0; p < puffs; p++) {
+      const puff = new THREE.Mesh(puffGeo, cloudMat);
+      puff.position.set(
+        (Math.random() - 0.5) * 2.2,
+        (Math.random() - 0.5) * 0.7,
+        (Math.random() - 0.5) * 1.8
+      );
+      puff.scale.set(
+        1.0 + Math.random() * 1.4,
+        0.6 + Math.random() * 0.5,
+        1.0 + Math.random() * 1.2
+      );
+      cluster.add(puff);
+    }
+
+    cluster.scale.setScalar(clusterScale);
+    cluster.userData = { driftSpeed: 0.6 + Math.random() * 0.8 };
+    cloudGroup.add(cluster);
+  }
+}
+
+spawnRandomClouds(34);
+
+// --- 6. Floating Virtual Joystick (Player 1 Fallback) ---
 const VirtualJoystick = (function () {
   let activePointerId = null;
   let startX = 0;
@@ -485,6 +547,7 @@ const VirtualJoystick = (function () {
   function onPointerDown(e) {
     if (activePointerId !== null) return;
     if (isInteractiveElement(e.target)) return;
+    if (p1GamepadIndex !== null) return; // Suppress touch joystick if P1 gamepad connected
     if ((gameMode === 'race' || gameMode === 'coop') && e.clientX > window.innerWidth * 0.5) return;
 
     activePointerId = e.pointerId;
@@ -545,7 +608,123 @@ const VirtualJoystick = (function () {
 
 VirtualJoystick.init({ maxRadius: 65 });
 
-// --- 7. Controls, Modes & State Management ---
+// --- 7. Dual Xbox Controller Pairing & Left Stick Control ---
+let p1GamepadIndex = null;
+let p2GamepadIndex = null;
+
+const p1StatusEl = document.getElementById('p1-pad-status');
+const p2StatusEl = document.getElementById('p2-pad-status');
+const p1ControlHint = document.getElementById('p1-control-hint');
+const p2ControlInd = document.getElementById('p2-control-indicator');
+
+function updateControlHints() {
+  if (p1ControlHint) {
+    if (p1GamepadIndex !== null) {
+      p1ControlHint.innerText = '🎮 Xbox Left Stick Flight';
+    } else if (gameMode === 'single') {
+      p1ControlHint.innerText = 'Left Stick / Touch / Mouse / Arrows / WASD';
+    } else {
+      p1ControlHint.innerText = 'Left Stick / Touch / Mouse / Arrows';
+    }
+  }
+
+  if (p2ControlInd) {
+    if (p2GamepadIndex !== null) {
+      p2ControlInd.innerText = '🎮 Xbox Left Stick Flight';
+    } else {
+      p2ControlInd.innerText = 'Keys WASD (No Pad Connected)';
+    }
+  }
+}
+
+function updateControllerUI() {
+  if (p1StatusEl) {
+    if (p1GamepadIndex !== null) {
+      p1StatusEl.className = 'pad-slot connected p1-connected';
+      p1StatusEl.querySelector('.pad-state').innerText = `✓ Xbox Pad [ID: ${p1GamepadIndex}]`;
+    } else {
+      p1StatusEl.className = 'pad-slot waiting';
+      p1StatusEl.querySelector('.pad-state').innerText = 'Press any [A / B / X / Y]';
+    }
+  }
+
+  if (p2StatusEl) {
+    if (p2GamepadIndex !== null) {
+      p2StatusEl.className = 'pad-slot connected p2-connected';
+      p2StatusEl.querySelector('.pad-state').innerText = `✓ Xbox Pad [ID: ${p2GamepadIndex}]`;
+    } else {
+      p2StatusEl.className = 'pad-slot waiting';
+      p2StatusEl.querySelector('.pad-state').innerText = 'Press any [A / B / X / Y]';
+    }
+  }
+
+  updateControlHints();
+}
+
+function pollGamepadsForPairingAndInput() {
+  if (!navigator.getGamepads) return { p1: { x: 0, y: 0, active: false }, p2: { x: 0, y: 0, active: false } };
+
+  const gamepads = navigator.getGamepads();
+
+  // 1. Scan for ABXY buttons (0: A, 1: B, 2: X, 3: Y) to pair controllers
+  for (let i = 0; i < gamepads.length; i++) {
+    const gp = gamepads[i];
+    if (!gp || !gp.connected) continue;
+
+    const abxyPressed = (gp.buttons[0] && gp.buttons[0].pressed) ||
+                        (gp.buttons[1] && gp.buttons[1].pressed) ||
+                        (gp.buttons[2] && gp.buttons[2].pressed) ||
+                        (gp.buttons[3] && gp.buttons[3].pressed);
+
+    if (abxyPressed) {
+      if (p1GamepadIndex === null && p2GamepadIndex !== i) {
+        p1GamepadIndex = i;
+        playRingChime(1.2);
+        updateControllerUI();
+      } else if (p2GamepadIndex === null && p1GamepadIndex !== i) {
+        p2GamepadIndex = i;
+        playRingChime(1.5);
+        updateControllerUI();
+      }
+    }
+  }
+
+  // 2. Read Left Stick with deadzone
+  function readLeftStick(gpIndex) {
+    if (gpIndex === null) return { x: 0, y: 0, active: false };
+    const gp = gamepads[gpIndex];
+    if (!gp || !gp.connected) return { x: 0, y: 0, active: false };
+
+    let lx = gp.axes[0] || 0;
+    let ly = gp.axes[1] || 0;
+
+    const DEADZONE = 0.18;
+    if (Math.abs(lx) < DEADZONE) lx = 0;
+    if (Math.abs(ly) < DEADZONE) ly = 0;
+
+    // D-Pad fallback
+    if (gp.buttons[14] && gp.buttons[14].pressed) lx = -1.0;
+    if (gp.buttons[15] && gp.buttons[15].pressed) lx = 1.0;
+    if (gp.buttons[12] && gp.buttons[12].pressed) ly = -1.0;
+    if (gp.buttons[13] && gp.buttons[13].pressed) ly = 1.0;
+
+    return { x: lx, y: ly, active: (Math.abs(lx) > 0 || Math.abs(ly) > 0) };
+  }
+
+  const p1Stick = readLeftStick(p1GamepadIndex);
+  const p2Stick = readLeftStick(p2GamepadIndex);
+
+  return { p1: p1Stick, p2: p2Stick };
+}
+
+window.addEventListener('gamepadconnected', updateControllerUI);
+window.addEventListener('gamepaddisconnected', (e) => {
+  if (p1GamepadIndex === e.gamepad.index) p1GamepadIndex = null;
+  if (p2GamepadIndex === e.gamepad.index) p2GamepadIndex = null;
+  updateControllerUI();
+});
+
+// --- 8. Controls, Modes & State Management ---
 let gameMode = 'menu';
 let invertPitch = false;
 let raceActive = false;
@@ -564,11 +743,13 @@ const keys = {
   W: false, A: false, S: false, D: false
 };
 
+let mouseP1Active = false;
 let mouseP1 = { x: 0, y: 0 };
 window.addEventListener('mousemove', (e) => {
-  if (!VirtualJoystick.isActive()) {
+  if (p1GamepadIndex === null && !VirtualJoystick.isActive()) {
     const maxX = (gameMode === 'race' || gameMode === 'coop') ? window.innerWidth * 0.5 : window.innerWidth;
     if (e.clientX <= maxX) {
+      mouseP1Active = true;
       mouseP1.x = (e.clientX / maxX) * 2 - 1;
       mouseP1.y = (e.clientY / window.innerHeight) * 2 - 1;
     }
@@ -595,9 +776,7 @@ const mobileToggleBtn = document.getElementById('mobile-btn');
 const invertToggleBtn = document.getElementById('invert-btn');
 const resetBtn = document.getElementById('reset-btn');
 const p1TagLabel = document.getElementById('p1-tag-label');
-const p1ControlHint = document.getElementById('p1-control-hint');
 const p1RouteHint = document.getElementById('p1-route-hint');
-const p2ControlInd = document.getElementById('p2-control-indicator');
 const p2RouteHint = document.getElementById('p2-route-hint');
 const raceFinishModal = document.getElementById('race-finish-modal');
 const raceWinnerTitle = document.getElementById('race-winner-title');
@@ -622,7 +801,6 @@ function setGameMode(mode) {
     camera1.updateProjectionMatrix();
 
     if (p1TagLabel) p1TagLabel.innerText = 'SOLO PILOT';
-    if (p1ControlHint) p1ControlHint.innerText = 'Mouse / Touch / Keys / Gamepad';
     if (p1RouteHint) p1RouteHint.innerText = 'Route: Gate 1 ➔ 12 (Forward)';
   } else if (mode === 'coop') {
     gliderP2.setVisible(true);
@@ -635,10 +813,7 @@ function setGameMode(mode) {
     camera2.updateProjectionMatrix();
 
     if (p1TagLabel) p1TagLabel.innerText = 'P1 • EMERALD (FORWARD ➔)';
-    if (p1ControlHint) p1ControlHint.innerText = 'Mouse / Touch / Arrows';
     if (p1RouteHint) p1RouteHint.innerText = 'Route: Gate 1 ➔ 12 (Forward)';
-
-    if (p2ControlInd) p2ControlInd.innerText = 'Keys WASD / Gamepad';
     if (p2RouteHint) p2RouteHint.innerText = 'Route: Gate 12 ➔ 1 (Reverse ⬅)';
   } else if (mode === 'race') {
     gliderP2.setVisible(true);
@@ -651,13 +826,11 @@ function setGameMode(mode) {
     camera2.updateProjectionMatrix();
 
     if (p1TagLabel) p1TagLabel.innerText = 'P1 • EMERALD';
-    if (p1ControlHint) p1ControlHint.innerText = 'Mouse / Touch / Arrows';
     if (p1RouteHint) p1RouteHint.innerText = 'Route: Gate 1 ➔ 12 (Race)';
-
-    if (p2ControlInd) p2ControlInd.innerText = 'Keys WASD / Gamepad';
     if (p2RouteHint) p2RouteHint.innerText = 'Route: Gate 1 ➔ 12 (Race)';
   }
 
+  updateControlHints();
   resetBothPlayers();
 }
 
@@ -747,34 +920,7 @@ function setupMobileControls() {
 }
 setupMobileControls();
 
-function pollGamepad() {
-  if (!navigator.getGamepads) return { x: 0, y: 0, active: false };
-  const gamepads = navigator.getGamepads();
-  for (let i = 0; i < gamepads.length; i++) {
-    const gp = gamepads[i];
-    if (gp && gp.connected) {
-      if (p2ControlInd && (gameMode === 'race' || gameMode === 'coop') && !p2ControlInd.innerText.includes('🎮')) {
-        p2ControlInd.innerText = `🎮 Gamepad: ${gp.id.substring(0, 12)}`;
-      }
-
-      let gx = gp.axes[0] || 0;
-      let gy = gp.axes[1] || 0;
-
-      if (Math.abs(gx) < 0.15) gx = 0;
-      if (Math.abs(gy) < 0.15) gy = 0;
-
-      if (gp.buttons[14] && gp.buttons[14].pressed) gx = -1;
-      if (gp.buttons[15] && gp.buttons[15].pressed) gx = 1;
-      if (gp.buttons[12] && gp.buttons[12].pressed) gy = -1;
-      if (gp.buttons[13] && gp.buttons[13].pressed) gy = 1;
-
-      return { x: gx, y: gy, active: Math.abs(gx) > 0 || Math.abs(gy) > 0 };
-    }
-  }
-  return { x: 0, y: 0, active: false };
-}
-
-// --- 8. Flight State Management ---
+// --- 9. Flight State Management ---
 function createPlayerState() {
   return {
     pos: new THREE.Vector3(0, 185, 480),
@@ -852,6 +998,8 @@ function resetBothPlayers() {
     p2.intro.elapsed = 0.0;
   }
 
+  spawnRandomClouds(34);
+
   raceActive = true;
   raceStartTime = performance.now();
   raceWinner = null;
@@ -878,7 +1026,7 @@ function triggerFinishModal(title, subtitle) {
   raceFinishModal.classList.add('active');
 }
 
-// --- 9. Physics, Kinematics & Loop Updates ---
+// --- 10. Physics, Kinematics & Loop Updates ---
 const clock = new THREE.Clock();
 
 const p1TimeEl = document.getElementById('p1-time-val');
@@ -1020,48 +1168,60 @@ function updatePlayerCamera(camera, player, delta) {
   }
 }
 
-// --- 10. Main Animation Loop & Split Viewport Rendering ---
+// --- 11. Main Animation Loop & Split Viewport Rendering ---
 function animate() {
   requestAnimationFrame(animate);
 
   const delta = Math.min(clock.getDelta(), 0.1);
   const t = clock.getElapsedTime();
-  const gp = pollGamepad();
+
+  // Poll Xbox Controllers
+  const gpInputs = pollGamepadsForPairingAndInput();
+
+  // Drift see-through clouds across sky
+  cloudGroup.children.forEach((c) => {
+    c.position.x += c.userData.driftSpeed * delta * 2.0;
+    if (c.position.x > 700) c.position.x = -700;
+  });
 
   const currentElapsedSecs = (raceStartTime > 0) ? (performance.now() - raceStartTime) / 1000 : 0;
   const timeP1Formatted = formatTime(p1.finishTime !== null ? p1.finishTime : currentElapsedSecs);
   const timeP2Formatted = formatTime(p2.finishTime !== null ? p2.finishTime : currentElapsedSecs);
 
-  // Player 1 Input
+  // --- Input Priority Hierarchy ---
+  // Player 1: Paired Xbox Pad -> Virtual Joystick -> Keyboard (Arrows/WASD) -> Mouse
   const steerP1 = { x: 0, y: 0 };
-  if (VirtualJoystick.isActive()) {
+  const hasArrowKeys = keys.ArrowLeft || keys.ArrowRight || keys.ArrowUp || keys.ArrowDown;
+  const hasSoloWasd = (gameMode === 'single') && (keys.a || keys.A || keys.d || keys.D || keys.w || keys.W || keys.s || keys.S);
+
+  if (gpInputs.p1.active) {
+    steerP1.x = gpInputs.p1.x;
+    steerP1.y = -gpInputs.p1.y * 1.25;
+  } else if (VirtualJoystick.isActive()) {
     const joy = VirtualJoystick.getVector();
     steerP1.x = joy.x;
     steerP1.y = -joy.y * 1.35;
-  } else if (keys.ArrowLeft || keys.ArrowRight || keys.ArrowUp || keys.ArrowDown) {
+  } else if (hasArrowKeys) {
     if (keys.ArrowLeft) steerP1.x -= 1.0;
     if (keys.ArrowRight) steerP1.x += 1.0;
     if (keys.ArrowUp) steerP1.y += 1.0;
     if (keys.ArrowDown) steerP1.y -= 1.0;
-  } else if (gameMode === 'single' && (keys.a || keys.A || keys.d || keys.D || keys.w || keys.W || keys.s || keys.S)) {
+  } else if (hasSoloWasd) {
     if (keys.a || keys.A) steerP1.x -= 1.0;
     if (keys.d || keys.D) steerP1.x += 1.0;
     if (keys.w || keys.W) steerP1.y += 1.0;
     if (keys.s || keys.S) steerP1.y -= 1.0;
-  } else if (gameMode === 'single' && gp.active) {
-    steerP1.x = gp.x;
-    steerP1.y = -gp.y * 1.25;
-  } else {
+  } else if (mouseP1Active) {
     steerP1.x = mouseP1.x;
     steerP1.y = -mouseP1.y;
   }
 
-  // Player 2 Input
+  // Player 2: Paired Xbox Pad -> Keyboard (WASD)
   const steerP2 = { x: 0, y: 0 };
   if (gameMode === 'race' || gameMode === 'coop') {
-    if (gp.active) {
-      steerP2.x = gp.x;
-      steerP2.y = -gp.y * 1.25;
+    if (gpInputs.p2.active) {
+      steerP2.x = gpInputs.p2.x;
+      steerP2.y = -gpInputs.p2.y * 1.25;
     } else {
       if (keys.a || keys.A) steerP2.x -= 1.0;
       if (keys.d || keys.D) steerP2.x += 1.0;

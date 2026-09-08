@@ -18,12 +18,27 @@
         <p class="game-subtitle">GTA ISLAND VORTEX FLIGHT</p>
       </div>
 
+      <!-- XBOX / GAMEPAD PAIRING STATUS PANEL -->
+      <div class="controller-pairing-box">
+        <div class="pairing-title">🎮 CONTROLLER PAIRING (XBOX / GAMEPAD)</div>
+        <div class="pairing-slots">
+          <div id="p1-pad-status" class="pad-slot waiting">
+            <span class="pad-label">P1 (EMERALD)</span>
+            <span class="pad-state">Press any [A / B / X / Y]</span>
+          </div>
+          <div id="p2-pad-status" class="pad-slot waiting">
+            <span class="pad-label">P2 (SAPPHIRE)</span>
+            <span class="pad-state">Press any [A / B / X / Y]</span>
+          </div>
+        </div>
+      </div>
+
       <div class="menu-options">
         <button id="btn-mode-single" class="menu-btn single-btn no-joystick">
           <div class="btn-icon">🪂</div>
           <div class="btn-text">
             <span class="btn-main">1 PLAYER SOLO</span>
-            <span class="btn-sub">Fullscreen Flight • Mouse / Keys / Gamepad</span>
+            <span class="btn-sub">Fullscreen Flight &bull; Left Stick / Touch Joystick / Mouse / Keys</span>
           </div>
         </button>
 
@@ -39,13 +54,13 @@
           <div class="btn-icon">🏁</div>
           <div class="btn-text">
             <span class="btn-main">2P COMPETITION RACE</span>
-            <span class="btn-sub">Split Screen • Both start at Gate 1 • Who reaches 12 first!</span>
+            <span class="btn-sub">Split Screen &bull; Both start at Gate 1 &bull; Who reaches 12 first!</span>
           </div>
         </button>
       </div>
 
       <div class="menu-footer">
-        <span>Controls: P1 (Mouse / Touch / Arrows) &bull; P2 (Keys WASD / Gamepad)</span>
+        <span>Left Stick / Touch Joystick = Steer &bull; P1 (Pad / Touch / Mouse / Arrows) &bull; P2 (Pad / WASD)</span>
       </div>
     </div>
   </div>
@@ -68,7 +83,7 @@
   <div class="player-panel left-panel">
     <div class="player-header">
       <div class="player-tag p1-tag" id="p1-tag-label">P1 • EMERALD</div>
-      <div class="controls-sub" id="p1-control-hint">Mouse / Touch / Arrows</div>
+      <div class="controls-sub" id="p1-control-hint">Mouse / Touch Stick / Arrows / WASD</div>
       <div class="route-sub" id="p1-route-hint">Route: Gate 1 ➔ 12 (Forward)</div>
     </div>
     
@@ -138,7 +153,7 @@
     </div>
   </div>
 
-  <!-- Floating Virtual Joystick (Assigned to P1) -->
+  <!-- Floating Virtual Joystick (Assigned to P1 fallback) -->
   <div id="virtual-joystick" class="joystick-container">
     <div class="joystick-base">
       <div class="joystick-ring"></div>
